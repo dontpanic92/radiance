@@ -402,6 +402,7 @@ impl Drop for VulkanRenderingEngine {
             self.descriptor_manager = None;
             self.dub_manager = None;
             self.allocator = None;
+            println!("1");
             self.debug_entry
                 .destroy_debug_report_callback(self.debug_callback, None);
             self.device().destroy_command_pool(self.command_pool, None);
@@ -411,11 +412,14 @@ impl Drop for VulkanRenderingEngine {
             self.device()
                 .destroy_semaphore(self.render_finished_semaphore, None);
 
+            println!("1");
             self.surface_entry.destroy_surface(self.surface, None);
             self.device().destroy_device(None);
+            println!("1");
 
             self.device = None;
             self.instance.destroy_instance(None);
+            println!("1");
         }
     }
 }
