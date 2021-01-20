@@ -5,10 +5,10 @@ use ash::prelude::VkResult;
 use ash::version::{DeviceV1_0, InstanceV1_0};
 use ash::{vk, Instance};
 use std::error::Error;
-use std::rc::{Rc, Weak};
+use std::rc::Rc;
 
 pub struct Image {
-    allocator: Weak<vk_mem::Allocator>,
+    allocator: Rc<vk_mem::Allocator>,
     image: vk::Image,
     allocation: vk_mem::Allocation,
     allocation_info: vk_mem::AllocationInfo,
@@ -238,7 +238,7 @@ impl Image {
             .unwrap();
 
         Ok(Self {
-            allocator: Rc::downgrade(allocator),
+            allocator: allocator.clone(),
             image,
             allocation,
             allocation_info,
@@ -275,8 +275,7 @@ impl Image {
 
 impl Drop for Image {
     fn drop(&mut self) {
-        let allocator = self.allocator.upgrade().unwrap();
-        allocator
+        self.allocator
             .destroy_image(self.image, &self.allocation)
             .unwrap();
     }

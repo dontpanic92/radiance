@@ -42,16 +42,15 @@ impl AdhocCommandRunner {
         record_command(&self.device, &command_buffers[0]);
         self.device.end_command_buffer(command_buffers[0])?;
 
-        let submit_info = vk::SubmitInfo::builder()
-            .command_buffers(&command_buffers)
-            .build();
-        self.device
-            .queue_submit(self.queue, &[submit_info], vk::Fence::default())?;
-        unsafe {
-            self.device.queue_wait_idle(self.queue)?;
+            let submit_info = vk::SubmitInfo::builder()
+                .command_buffers(&command_buffers)
+                .build();
             self.device
-                .free_command_buffers(self.command_pool, &command_buffers);
-        }
+                .queue_submit(self.queue, &[submit_info], vk::Fence::default())?;
+
+        self.device.queue_wait_idle(self.queue)?;
+        self.device
+            .free_command_buffers(self.command_pool, &command_buffers);
 
         Ok(())
     }

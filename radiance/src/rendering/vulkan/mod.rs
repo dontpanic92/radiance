@@ -4,6 +4,7 @@ mod creation_helpers;
 mod descriptor_managers;
 mod descriptor_pool;
 mod descriptor_set_layout;
+mod device;
 mod error;
 mod factory;
 mod helpers;

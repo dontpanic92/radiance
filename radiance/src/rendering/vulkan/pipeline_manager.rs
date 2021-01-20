@@ -5,11 +5,10 @@ use ash::vk;
 use ash::Device;
 use std::collections::HashMap;
 use std::rc::Rc;
-use std::rc::Weak;
 
 pub struct PipelineManager {
-    device: Weak<Device>,
-    descriptor_manager: Weak<DescriptorManager>,
+    device: Rc<Device>,
+    descriptor_manager: Rc<DescriptorManager>,
     color_format: vk::Format,
     depth_format: vk::Format,
     extent: vk::Extent2D,
@@ -28,8 +27,8 @@ impl PipelineManager {
         let render_pass = RenderPass::new(device, color_format, depth_format);
 
         Self {
-            device: Rc::downgrade(device),
-            descriptor_manager: Rc::downgrade(descriptor_manager),
+            device: device.clone(),
+            descriptor_manager: descriptor_manager.clone(),
             color_format,
             depth_format,
             extent,
@@ -40,14 +39,12 @@ impl PipelineManager {
 
     pub fn create_pipeline_if_not_exist(&mut self, material: &VulkanMaterial) -> &Pipeline {
         let name = material.name();
-        let device = self.device.upgrade().unwrap();
-        let descriptor_manager = self.descriptor_manager.upgrade().unwrap();
         if !self.pipelines.contains_key(name) {
             self.pipelines.insert(
                 name.to_owned(),
                 Pipeline::new(
-                    &device,
-                    &descriptor_manager,
+                    &self.device,
+                    &self.descriptor_manager,
                     &self.render_pass,
                     material,
                     self.extent,

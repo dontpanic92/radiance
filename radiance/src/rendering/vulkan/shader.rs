@@ -4,11 +4,11 @@ use ash::version::DeviceV1_0;
 use ash::vk;
 use ash::Device;
 use std::error::Error;
-use std::rc::{Rc, Weak};
+use std::rc::Rc;
 use std::sync::Arc;
 
 pub struct VulkanShader {
-    device: Weak<Device>,
+    device: Rc<Device>,
     vertex_metadata: Arc<VertexMetadata>,
     vert_shader: vk::ShaderModule,
     frag_shader: vk::ShaderModule,
@@ -29,7 +29,7 @@ impl VulkanShader {
             Self::create_shader_module_from_memory(&device, shader_def.frag_src()).unwrap();
 
         Ok(Self {
-            device: Rc::downgrade(&device),
+            device: device.clone(),
             vertex_metadata: VertexMetadata::get(shader_def.vertex_components()),
             vert_shader,
             frag_shader,
@@ -129,10 +129,9 @@ impl VulkanShader {
 
 impl Drop for VulkanShader {
     fn drop(&mut self) {
-        let device = self.device.upgrade().unwrap();
         unsafe {
-            device.destroy_shader_module(self.vert_shader, None);
-            device.destroy_shader_module(self.frag_shader, None);
+            self.device.destroy_shader_module(self.vert_shader, None);
+            self.device.destroy_shader_module(self.frag_shader, None);
         }
     }
 }

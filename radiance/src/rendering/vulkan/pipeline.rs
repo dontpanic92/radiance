@@ -6,10 +6,9 @@ use ash::{vk, Device};
 use std::error::Error;
 use std::ffi::CString;
 use std::rc::Rc;
-use std::rc::Weak;
 
 pub struct Pipeline {
-    device: Weak<Device>,
+    device: Rc<Device>,
     pipeline: vk::Pipeline,
     pipeline_layout: PipelineLayout,
 }
@@ -34,7 +33,7 @@ impl Pipeline {
         .unwrap()[0];
 
         Self {
-            device: Rc::downgrade(&device),
+            device: device.clone(),
             pipeline,
             pipeline_layout,
         }
@@ -184,9 +183,8 @@ impl Pipeline {
 
 impl Drop for Pipeline {
     fn drop(&mut self) {
-        let device = self.device.upgrade().unwrap();
         unsafe {
-            device.destroy_pipeline(self.pipeline, None);
+            self.device.destroy_pipeline(self.pipeline, None);
         }
     }
 }

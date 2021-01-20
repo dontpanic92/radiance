@@ -1,10 +1,9 @@
 use ash::version::DeviceV1_0;
 use ash::{prelude::VkResult, vk, Device};
 use std::rc::Rc;
-use std::rc::Weak;
 
 pub struct PipelineLayout {
-    device: Weak<Device>,
+    device: Rc<Device>,
     pipeline_layout: vk::PipelineLayout,
 }
 
@@ -13,7 +12,7 @@ impl PipelineLayout {
         let pipeline_layout = Self::create_pipeline_layout(device, descriptor_set_layouts).unwrap();
 
         Self {
-            device: Rc::downgrade(device),
+            device: device.clone(),
             pipeline_layout,
         }
     }
@@ -35,9 +34,9 @@ impl PipelineLayout {
 
 impl Drop for PipelineLayout {
     fn drop(&mut self) {
-        let device = self.device.upgrade().unwrap();
         unsafe {
-            device.destroy_pipeline_layout(self.pipeline_layout, None);
+            self.device
+                .destroy_pipeline_layout(self.pipeline_layout, None);
         }
     }
 }

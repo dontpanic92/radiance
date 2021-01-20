@@ -8,7 +8,7 @@ use ash::vk;
 use ash::Device;
 use std::error::Error;
 use std::rc::Rc;
-use std::sync::{Arc, Weak};
+use std::sync::Arc;
 
 pub struct VulkanRenderObject {
     vertices: VertexBuffer,
@@ -16,7 +16,7 @@ pub struct VulkanRenderObject {
     host_dynamic: bool,
     dirty: bool,
 
-    dub_manager: Weak<DynamicUniformBufferManager>,
+    dub_manager: Arc<DynamicUniformBufferManager>,
     vertex_buffer: Buffer,
     index_buffer: Buffer,
     material: Box<VulkanMaterial>,
@@ -72,7 +72,7 @@ impl VulkanRenderObject {
             material,
             host_dynamic,
             dirty: false,
-            dub_manager: Arc::downgrade(dub_manager),
+            dub_manager: dub_manager.clone(),
             vertex_buffer,
             index_buffer,
             per_object_descriptor_sets,
@@ -103,7 +103,6 @@ impl VulkanRenderObject {
 
 impl Drop for VulkanRenderObject {
     fn drop(&mut self) {
-        let dub_manager = self.dub_manager.upgrade().unwrap();
-        dub_manager.deallocate_buffer(self.dub_index);
+        self.dub_manager.deallocate_buffer(self.dub_index);
     }
 }

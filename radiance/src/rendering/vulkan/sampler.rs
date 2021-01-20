@@ -1,10 +1,10 @@
 use ash::prelude::VkResult;
 use ash::version::DeviceV1_0;
 use ash::{vk, Device};
-use std::rc::{Rc, Weak};
+use std::rc::Rc;
 
 pub struct Sampler {
-    device: Weak<Device>,
+    device: Rc<Device>,
     sampler: vk::Sampler,
 }
 
@@ -29,7 +29,7 @@ impl Sampler {
             .build();
         let sampler = unsafe { device.create_sampler(&sampler_info, None)? };
         Ok(Self {
-            device: Rc::downgrade(device),
+            device: device.clone(),
             sampler,
         })
     }
@@ -41,9 +41,8 @@ impl Sampler {
 
 impl Drop for Sampler {
     fn drop(&mut self) {
-        let device = self.device.upgrade().unwrap();
         unsafe {
-            device.destroy_sampler(self.sampler, None);
+            self.device.destroy_sampler(self.sampler, None);
         }
     }
 }

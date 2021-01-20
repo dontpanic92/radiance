@@ -1,10 +1,9 @@
 use ash::version::DeviceV1_0;
 use ash::{prelude::VkResult, vk, Device};
 use std::rc::Rc;
-use std::rc::Weak;
 
 pub struct RenderPass {
-    device: Weak<Device>,
+    device: Rc<Device>,
     render_pass: vk::RenderPass,
 }
 
@@ -13,7 +12,7 @@ impl RenderPass {
         let render_pass = Self::create_render_pass(device, color_format, depth_format).unwrap();
 
         Self {
-            device: Rc::downgrade(device),
+            device: device.clone(),
             render_pass,
         }
     }
@@ -91,9 +90,8 @@ impl RenderPass {
 
 impl Drop for RenderPass {
     fn drop(&mut self) {
-        let device = self.device.upgrade().unwrap();
         unsafe {
-            device.destroy_render_pass(self.render_pass, None);
+            self.device.destroy_render_pass(self.render_pass, None);
         }
     }
 }

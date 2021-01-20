@@ -1,22 +1,22 @@
-use super::adhoc_command_runner::AdhocCommandRunner;
 use super::creation_helpers;
 use super::descriptor_managers::DescriptorManager;
 use super::helpers;
 use super::render_object::VulkanRenderObject;
 use super::swapchain::SwapChain;
+use super::{adhoc_command_runner::AdhocCommandRunner, device::Device};
 use super::{
     factory::VulkanComponentFactory,
     uniform_buffers::{DynamicUniformBufferManager, PerFrameUniformBuffer},
 };
+use crate::math::Mat44;
 use crate::scene::{entity_get_component, Scene};
 use crate::{
     imgui::{ImguiContext, ImguiFrame},
     rendering::{ComponentFactory, RenderingComponent, RenderingEngine, Window},
 };
-use crate::{math::Mat44, scene::Entity};
 use ash::extensions::ext::DebugReport;
-use ash::version::{DeviceV1_0, InstanceV1_0};
-use ash::{vk, Device, Entry, Instance};
+use ash::version::InstanceV1_0;
+use ash::{vk, Entry, Instance};
 use std::iter::Iterator;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -26,7 +26,7 @@ pub struct VulkanRenderingEngine {
     entry: Entry,
     instance: Rc<Instance>,
     physical_device: vk::PhysicalDevice,
-    device: Option<Rc<Device>>,
+    device: Rc<Device>,
     allocator: Option<Rc<vk_mem::Allocator>>,
     surface: vk::SurfaceKHR,
     format: vk::SurfaceFormatKHR,
@@ -105,16 +105,16 @@ impl VulkanRenderingEngine {
             surface,
         )?;
 
-        let device = Rc::new(creation_helpers::create_device(
-            &instance,
+        let device = Rc::new(Device::new(
+            instance.clone(),
             physical_device,
             graphics_queue_family_index,
-        )?);
+        ));
 
         let allocator = Rc::new({
             let create_info = vk_mem::AllocatorCreateInfo {
                 physical_device,
-                device: (*device).clone(),
+                device: device.vk_device().clone(),
                 instance: instance.as_ref().clone(),
                 flags: vk_mem::AllocatorCreateFlags::NONE,
                 preferred_large_heap_block_size: 0,
@@ -133,7 +133,7 @@ impl VulkanRenderingEngine {
             surface_entry.get_physical_device_surface_capabilities(physical_device, surface)?
         };
 
-        let queue = unsafe { device.get_device_queue(graphics_queue_family_index, 0) };
+        let queue = device.get_device_queue(graphics_queue_family_index, 0);
         let command_pool = {
             let create_info = vk::CommandPoolCreateInfo::builder()
                 .flags(
@@ -142,10 +142,10 @@ impl VulkanRenderingEngine {
                 )
                 .queue_family_index(graphics_queue_family_index)
                 .build();
-            unsafe { device.create_command_pool(&create_info, None)? }
+            device.create_command_pool(&create_info)?
         };
 
-        let descriptor_manager = Rc::new(DescriptorManager::new(&device).unwrap());
+        let descriptor_manager = Rc::new(DescriptorManager::new(device.clone()).unwrap());
         let min_uniform_buffer_alignment = unsafe {
             instance
                 .get_physical_device_properties(physical_device)
@@ -153,13 +153,12 @@ impl VulkanRenderingEngine {
                 .min_uniform_buffer_offset_alignment
         };
         let dub_manager = Arc::new(DynamicUniformBufferManager::new(
-            &device,
             &allocator,
             descriptor_manager.dub_descriptor_manager(),
             min_uniform_buffer_alignment,
         ));
 
-        let adhoc_command_runner = Rc::new(AdhocCommandRunner::new(&device, command_pool, queue));
+        let adhoc_command_runner = Rc::new(AdhocCommandRunner::new(device.clone(), command_pool, queue));
         let swapchain = SwapChain::new(
             &instance,
             &device,
@@ -409,7 +408,6 @@ impl Drop for VulkanRenderingEngine {
                 .destroy_semaphore(self.render_finished_semaphore, None);
 
             self.surface_entry.destroy_surface(self.surface, None);
-            self.device().destroy_device(None);
 
             self.device = None;
             self.instance.destroy_instance(None);
